@@ -14,16 +14,32 @@ format:
 
 # Introduction
 
-I first heard about "AB Testing" way back in 2008 when I joined the tech world. My bachelor's degree from San Jose State in Mathematics exposed me to hypothesis testing. So p-values, statistical power, and confidence intervals were all familiar concepts to me. 
+I first heard about "AB Testing" way back in 2008 when I joined the tech world. My bachelor's from San Jose State in mathematics exposed me to hypothesis testing. So p-values, statistical power, and confidence intervals were all familiar concepts to me. 
 
-Over the years I built many iterations of experiment design and analysis tools. And used the CLT to expand tools to support continuous metrics like revenue and time-on-site. Later I discovered that the Sequential Probability Ratio Test could help me to run faster experiments. I wrote simulations to estimate SPRT runtime in our design tools.
+Over the years I built many iterations of experiment design and analysis tools. I used the CLT to expand tools to support continuous metrics like revenue and time-on-site. Later I discovered that the Sequential Probability Ratio Test could help me to run faster experiments. And I wrote numpy simulations to estimate SPRT runtime in our design tools.
 
-I built tools to design and analyze sequential significance experiments. I became a relative expert on controlling the frequency of Type I errors (false positives) and Type II errors (false negatives). 
+I built apps to design and analyze sequential significance experiments. I became an expert on controlling the frequency of Type I errors (false positives) and Type II errors (false negatives). 
+
+**But so what?** 
+
+Are these frequentist methods generating value for the company? Or is it an exercise in pedantry?
+Within a few short paragraphs, you'll see why significance testing in industry is massively misused.
+
+# Significance Testing
+
+## Misaligned Goals
+
+**Significance Testing**  is designed to rigorously control the frequency of false positives. If you're writing physics papers or claiming groundbreaking scientific discoveries, it's the perfect tool.
+
+In these fields, false positives are extremely costly — both reputationally and scientifically. That’s why physicists often require 5-sigma evidence — about a 1 in 3.5 million chance that the result is a fluke.
+
+But significance testing says nothing about the most important question:
+
+Which decision has the highest expected return — ending the test, running it longer, or taking action now?
 
 
-But so what? Are these frequentist methods generating value for the company? Or is it an exercise in pedantry?
-Within a few short paragraphs, you'll see why significance testing in industry is a massive failure.
 
-## Why Significance Testing Doesn't Work
+
+
 
 
