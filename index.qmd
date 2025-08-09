@@ -46,7 +46,15 @@ But in most business settings, **false positives aren’t that costly**. We thou
 
 But missing a true winner? That’s a lost opportunity — and sometimes, **a costly one**.
 
+What's the right balance to take? What are the factors that affect the balance?
 
+# Bayesian Testing
+
+## Aligning Goals
+
+The moment you ask, “What’s the expected value of this decision?”, you’ve entered Bayesian territory. You stop obsessing over p-values and start focusing on the projected impact of your actions.
+
+Bayesian testing isn’t a new set of formulas — it’s a philosophical shift. One that aligns statistical thinking with how businesses actually need to make decisions.
 
 
 
