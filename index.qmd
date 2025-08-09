@@ -37,6 +37,14 @@ But significance testing says nothing about the most important question:
 
 Which decision has the highest expected return — ending the test, running it longer, or taking action now?
 
+## Misaligned Costs
+
+Most companies default to a significance threshold of **α = 0.05** and statistical power of **1 – β = 0.80**.
+In practical terms, that means the test is designed to avoid **false positives** four times more aggressively than **false negatives**.
+
+But in most business settings, **false positives aren’t that costly**. We thought a new button color improved conversion — turns out it didn’t. **So what?** The variant was flat, not disastrous.
+
+But missing a true winner? That’s a lost opportunity — and sometimes, **a costly one**.
 
 
 
