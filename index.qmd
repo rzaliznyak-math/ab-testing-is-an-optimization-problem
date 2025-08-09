@@ -1,8 +1,8 @@
 ---
-title: "AB Testing is An Optimization Problem"
-subtitle: My Journey to Bayesian Testing
+title: "AB Testing is an Optimization Problem"
+subtitle: A Bayesian Criterion for Stopping Experiments
 author: "Russ Zaliznyak"
-date: "2025-08-05"
+date: "2025-08-10"
 execute:
   echo: false
 format: 
@@ -14,9 +14,9 @@ format:
 
 # Introduction
 
-I argue that significance testing, as traditionally applied in AB experiments, is often misaligned with business goals. While these statistical methods aim to minimize false positives, real business impact is frequently driven by avoiding false negatives — missed opportunities to create value.
+Significance testing, as traditionally applied in AB experiments, is often misaligned with business goals. While these statistical methods aim to minimize false positives, real business impact is frequently driven by avoiding false negatives — missed opportunities to create value.
 
-Below I show why standard thresholds like α = 0.05 are arbitrary and can distort decision-making. I introduce Bayesian testing as a more practical alternative, and demonstrate — through discussion and simulation — how it better supports value-driven experimentation.
+Below I show why significance thresholds like α = 0.05 are arbitrary and distort decision-making. I introduce Bayesian testing as a more practical alternative, and demonstrate — through discussion and simulation — how it better supports value-driven experimentation.
 
 By reframing AB testing around expected value and decision quality, I move beyond rigid thresholds toward practical impact — treating experimentation as an optimization problem, not just a statistical exercise.
 
@@ -41,16 +41,90 @@ But in most business settings, **false positives aren’t that costly**. We thou
 
 But missing a true winner? That’s a lost opportunity — and sometimes, **a costly one**.
 
-**What's the optimal balance to strike?**
+
 
 # Bayesian Testing
 
-## Aligning Goals
+## Aligned Goals
 
 The moment you ask, “What’s the expected value of this decision?”, you’ve entered Bayesian territory. You stop obsessing over p-values and start focusing on the projected impact of your actions.
 
 Bayesian testing isn’t a new set of formulas — it’s a philosophical shift. One that aligns statistical thinking with how businesses actually need to make decisions.
 
 
+## Aligned Costs
+
+We abandon our obsession with p-values and statistical power by introducing the statistic _expected loss_ as our stopping criterion.
+
+Expected loss quantifies the risk of a bad decision as:
+
+$$
+\text{Expected Loss} = \Pr(\text{harm}) \times \mathbb{E}[\text{Magnitude of Harm}]
+$$
+
+This simple formula captures two critical ideas:
+- The **likelihood** of a harmful outcome,
+- And its **average cost** when it occurs.
+
+Instead of asking, “Is this result statistically significant?”, we ask, “What’s the cost of making the wrong call?”
+
+# A Simulation Framework
+
+To evaluate these principles under real-world constraints—limited time, limited traffic, and the tradeoff between speed and confidence—I will simulate 10,000 randomized AB tests with equal allocation to control and treatment groups:
+
+## Experiment Design
+
+Each of the 10,000 simulated experiments will span up to 20 days, with traffic split evenly between control and treatment groups. Each day, users are randomly assigned to a condition in a 50/50 ratio, and conversion outcomes are sampled using a binomial process. This introduces natural day-to-day variation, allowing the simulation to reflect how decisions evolve over time as new data accumulates.
 
 
+| Min (Test Days) | Max (Test Days) | Max (Test N) | Post Test N | Conversion Rate |
+|-----------------|------------------|---------------|---------------|------------------|
+| 7               | 20               | 80,000        | 500,000       | 50%              |
+
+
+Although the **Control** group has a true conversion rate of 50%, observed results will fluctuate due to random chance — just as they would in a real-world test.
+
+## Expected Effects
+
+Each of the 10,000 simulated experiments draws a random treatment effect from the distribution shown below — a normal distribution centered at 100 with a standard error of 0.25. This models the natural variability in real-world experiments, where most effects are small, large lifts are uncommon, and we never know the complete truth.
+
+Just like the control group varies due to sampling, a treatment programmed to be better (ITC > 100) may still underperform or overperform in any given simulation.
+
+```{python}
+#| echo: false
+#| code-fold: true
+#| fig-cap: ""
+from numpy.random import laplace, normal
+from utilities.distributions import draw_distribution_classic
+INTUIT_RED = "#bd0707"
+INTUIT_BLUE = "#0177c9"
+
+distribution_type = "normal"
+true_effect_mean = 100
+true_effect_se = 0.25
+distributions = {"laplace": laplace, "normal": normal}
+dist_func = distributions.get(distribution_type, normal)  # fallback to normal
+itc_samples = (
+    dist_func(
+        true_effect_mean, true_effect_se, int(1e5)
+    )
+    / 100
+)
+
+itc_fig = draw_distribution_classic(
+  itc_samples * 100,
+  is_rate=False,
+  x_axis_title="Index-to-Control",
+  colors=[INTUIT_RED, INTUIT_BLUE],
+  add_median=True,
+  title=f"{distribution_type.title()}",
+  positive_direction=True,
+)
+
+itc_fig.show()
+
+```
+
+## Candidate Stopping Thresholds
+
+Each one of simulated experiments has a 
