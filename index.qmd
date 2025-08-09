@@ -67,6 +67,7 @@ This simple formula captures two critical ideas:
 - And its **average cost** when it occurs.
 
 Instead of asking, “Is this result statistically significant?”, we ask, “What’s the cost of making the wrong call?”
+Expected loss is denominated in the units of the underlying metric. For conversion rate, we will use `%`, which refers to `% pts`.
 
 # A Simulation Framework
 
@@ -125,6 +126,27 @@ itc_fig.show()
 
 ```
 
-## Candidate Stopping Thresholds
+## Candidate Risk Thresholds
 
-Each one of simulated experiments has a 
+A risk threshold defines how much expected loss I'm willing to tolerate before stopping the test and declaring a winner. To explore tradeoffs between speed and accuracy, I simulate decisions using a range of candidate thresholds (e.g., 0.01%, 0.02%, ..., 0.10%).
+
+Each candidate represents a different level of risk tolerance: lower thresholds are more cautious, while higher ones allow for faster decisions with greater uncertainty.
+
+
+## Simulation Logic
+
+1. For each simulation, and each day after `min(test_days)`:
+   - Compute **expected loss** for both control and treatment conditions.
+   - Compare each condition’s expected loss to the candidate risk threshold.
+
+2. Decision rules:
+   - If **only one** condition breaches the threshold → select it as the winner.
+   - If **both** breach → choose the condition with the **lower risk**.
+   - If **neither** breaches by the end of the test → select the condition with the **lowest final risk**.
+
+3. After selecting a winner:
+   - Simulate rolling out the winner to the **remaining test population** and the **post-test population**, regardless of whether it was truly best.
+
+This process lets me estimate how each candidate risk threshold shapes **decision quality** and the resulting **business value across the test and post-test populations**.
+
+# Results
