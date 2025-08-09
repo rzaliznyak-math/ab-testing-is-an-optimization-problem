@@ -14,16 +14,11 @@ format:
 
 # Introduction
 
-I first heard about "AB Testing" way back in 2008 when I joined the tech world. My bachelor's from San Jose State in mathematics exposed me to hypothesis testing. So p-values, statistical power, and confidence intervals were all familiar concepts to me. 
+I argue that significance testing, as traditionally applied in AB experiments, is often misaligned with business goals. While these statistical methods aim to minimize false positives, real business impact is frequently driven by avoiding false negatives — missed opportunities to create value.
 
-Over the years I built many iterations of experiment design and analysis tools. I used the CLT to expand tools to support continuous metrics like revenue and time-on-site. Later I discovered that the Sequential Probability Ratio Test could help me to run faster experiments. And I wrote numpy simulations to estimate SPRT runtime in our design tools.
+Below I show why standard thresholds like α = 0.05 are arbitrary and can distort decision-making. I introduce Bayesian testing as a more practical alternative, and demonstrate — through discussion and simulation — how it better supports value-driven experimentation.
 
-I built apps to design and analyze sequential significance experiments. I became an expert on controlling the frequency of Type I errors (false positives) and Type II errors (false negatives). 
-
-**But so what?** 
-
-Are these frequentist methods generating value for the company? Or is it an exercise in pedantry?
-Within a few short paragraphs, you'll see why significance testing in industry is massively misused.
+By reframing AB testing around expected value and decision quality, I move beyond rigid thresholds toward practical impact — treating experimentation as an optimization problem, not just a statistical exercise.
 
 # Significance Testing
 
@@ -33,7 +28,7 @@ Within a few short paragraphs, you'll see why significance testing in industry i
 
 In these fields, false positives are extremely costly — both reputationally and scientifically. That’s why physicists often require 5-sigma evidence — about a 1 in 3.5 million chance that the result is a fluke.
 
-But significance testing says nothing about the most important question:
+But significance testing says nothing about the most important business questions:
 
 Which decision has the highest expected return — ending the test, running it longer, or taking action now?
 
@@ -46,7 +41,7 @@ But in most business settings, **false positives aren’t that costly**. We thou
 
 But missing a true winner? That’s a lost opportunity — and sometimes, **a costly one**.
 
-What's the right balance to take? What are the factors that affect the balance?
+**What's the optimal balance to strike?**
 
 # Bayesian Testing
 
