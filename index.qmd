@@ -67,42 +67,50 @@ This simple formula captures two critical ideas:
 - And its **average cost** when it occurs.
 
 Instead of asking, “Is this result statistically significant?”, we ask, “What’s the cost of making the wrong call?”
-Expected loss is denominated in the units of the underlying metric. For conversion rate, we will use `%`, which refers to `% pts`.
+Expected loss is expressed in the same units as the underlying metric. For conversion rate, we will use `%`, which refers to `% pts`.
 
 # A Simulation Framework
+```{python}
+NUMBER_SIMULATIONS = int(1e4)
+```
 
-To evaluate these principles under real-world constraints—limited time, limited traffic, and the tradeoff between speed and confidence—I will simulate 10,000 randomized AB tests with equal allocation to control and treatment groups:
+
+To evaluate these principles under real-world constraints—limited time, limited traffic, and the tradeoff between speed and confidence—I will simulate `{python} f"{NUMBER_SIMULATIONS:,}"` randomized AB tests with equal allocation to control and treatment groups.
+
+The beauty of the framework is that we know the truth coded into the simulations, but the analysis methods are completely blind to the truth. Each method, Bayesian or Significance, will try their best. Only after they are done, we analyze their performance.
 
 ## Experiment Design
 
-Each of the 10,000 simulated experiments will span up to 20 days, with traffic split evenly between control and treatment groups. Each day, users are randomly assigned to a condition in a 50/50 ratio, and conversion outcomes are sampled using a binomial process. This introduces natural day-to-day variation, allowing the simulation to reflect how decisions evolve over time as new data accumulates.
+Each of the `{python} f"{NUMBER_SIMULATIONS:,}"` simulated experiments will span up to 20 days, with traffic split evenly between control and treatment groups. Each day, users are randomly assigned to a condition in a 50/50 ratio, and conversion outcomes are sampled using a binomial process. This introduces natural day-to-day variation, allowing the simulation to reflect how decisions evolve over time as new data accumulates.
 
 
 | Min (Test Days) | Max (Test Days) | Max (Test N) | Post Test N | Conversion Rate |
 |-----------------|------------------|---------------|---------------|------------------|
-| 7               | 20               | 80,000        | 500,000       | 50%              |
+| 7               | 20               | 100,000        | 500,000       | 65%              |
 
 
-Although the **Control** group has a true conversion rate of 50%, observed results will fluctuate due to random chance — just as they would in a real-world test.
+Although the **Control** group has a true conversion rate of 65%, observed results will fluctuate due to random chance — just as they would in a real-world test.
 
 ## Expected Effects
 
-Each of the 10,000 simulated experiments draws a random treatment effect from the distribution shown below — a normal distribution centered at 100 with a standard error of 0.25. This models the natural variability in real-world experiments, where most effects are small, large lifts are uncommon, and we never know the complete truth.
+Each of the `{python} f"{NUMBER_SIMULATIONS:,}"` simulated experiments draws a random treatment effect from the distribution shown below — a normal distribution centered at 100 with a standard error of 0.5. This models the natural variability in real-world experiments, where most effects are small, large lifts are uncommon, and we never know the complete truth.
+Later we can consider swapping in other distributions like Laplce for fatter tails.
 
 Just like the control group varies due to sampling, a treatment programmed to be better (ITC > 100) may still underperform or overperform in any given simulation.
 
 ```{python}
 #| echo: false
 #| code-fold: true
-#| fig-cap: ""
+#| fig-cap: "Normal Distribution with μ = 100 and σ = 0.5."
 from numpy.random import laplace, normal
 from utilities.distributions import draw_distribution_classic
 INTUIT_RED = "#bd0707"
 INTUIT_BLUE = "#0177c9"
 
 distribution_type = "normal"
+#distribution_type = "laplace"
 true_effect_mean = 100
-true_effect_se = 0.25
+true_effect_se = 0.5
 distributions = {"laplace": laplace, "normal": normal}
 dist_func = distributions.get(distribution_type, normal)  # fallback to normal
 itc_samples = (
@@ -147,6 +155,309 @@ Each candidate represents a different level of risk tolerance: lower thresholds 
 3. After selecting a winner:
    - Simulate rolling out the winner to the **remaining test population** and the **post-test population**, regardless of whether it was truly best.
 
+
+<!--
+::: {.callout-tip collapse="true" icon="" title="Example: Using Expected Loss as a Stopping Rule"}
+
+- **Minimum test duration:** 7 days  
+- **Current day:** 9  
+- **Expected loss for Control:** 0.06 percentage points  
+- **Expected loss for Treatment:** 0.02 percentage points  
+- **Risk threshold:** 0.03 percentage points  
+
+
+#### Decision Logic
+
+- Treatment’s expected loss **falls below** the risk threshold → it's safe to stop and declare it the winner.
+
+We stop the test **not because a p-value is below 0.05**, but because:
+
+> “The cost of making the wrong decision is now acceptably low.”
+
+This decision rule helps prioritize speed and safety without rigid statistical cutoffs.
+
+
+:::
+
+-->
+
 This process lets me estimate how each candidate risk threshold shapes **decision quality** and the resulting **business value across the test and post-test populations**.
 
 # Results
+
+
+```{python}
+from numpy import mean, abs, mean, minimum, maximum, array
+
+
+def expected_loss(control_samples, treatment_samples, risk_type="loss"):
+    delta = treatment_samples - control_samples
+    true_delta = mean(treatment_samples) - mean(control_samples)
+
+    if risk_type == "loss":
+        expected_loss = abs(mean(minimum(delta, 0)))
+        expected_gain = true_delta + expected_loss
+    else:
+        expected_loss = abs(mean(maximum(delta, 0)))
+        expected_gain = expected_loss - true_delta
+
+    return expected_gain, expected_loss
+
+
+```
+
+
+```{python}
+#| echo: false
+#| code-fold: true
+import sys
+utilities_path = './utilities/'
+sys.path.insert(0, utilities_path)
+
+import experimentSimulationObject as eso
+import power_methods as pm
+
+from numpy import sum, array, argmax, argmin
+from numpy.random import normal
+from math import ceil
+from scipy.stats import norm
+from timeit import default_timer
+import plotly.graph_objects as go
+
+# --- Constants & Parameters ---
+alpha = 0.05
+power = 0.80
+
+control_mean = 0.65
+control_std = (control_mean * (1 - control_mean)) ** 0.5
+is_rate = True
+number_conditions = 2
+allocation_list = array([0.5, 0.5])
+min_test_days = 7
+max_test_days = 20
+max_test_n = int(1e5)
+post_test_n = int(5e5)
+metric_direction = "increase"
+risk_type = "loss" if metric_direction.lower() == "increase" else "gain"
+index_to_control_planned = 1.01
+treatment_mean = control_mean * index_to_control_planned
+
+control_trials, treatment_trials = tuple(allocation_list * max_test_n)
+number_daily_visitors = max_test_n / max_test_days
+control_se = control_std / control_trials**0.5
+treatment_se = control_se
+
+z_critical = (
+    norm.ppf(1 - alpha) if metric_direction == "increase" else norm.ppf(alpha)
+)
+
+# --- Sample Size Calculations ---
+fixed_sample_limit = sum(pm.two_proportion_required_samples(
+    alpha,
+    power,
+    control_mean,
+    treatment_mean,
+    control_to_treatment_ratio=1,
+    tail_type="one_tail",
+))
+
+max_fixed_volume = (
+    fixed_sample_limit if max_test_n >= fixed_sample_limit else max_test_n
+)
+
+# Ensure fixed step respects bounds
+actual_fixed_days = min(
+    ceil(max_fixed_volume / number_daily_visitors), max_test_days
+)
+actual_fixed_days = max(actual_fixed_days, min_test_days)
+
+max_volume_year = post_test_n + max_test_n
+
+# --- Simulate Control/Treatment Samples ---
+control_samples = normal(control_mean, control_se, 10000)
+treatment_samples = normal(treatment_mean, treatment_se, 10000)
+
+e_gain, e_loss = expected_loss(
+    control_samples, treatment_samples, risk_type=risk_type
+)
+max_threshold = 0.5 * max(e_gain, e_loss)
+
+n_increments = 40
+step = max_threshold / (n_increments if n_increments > 0 else 0)
+threshold_values = [round(i * step, 10) for i in range(n_increments + 1)]
+
+
+all_simulations = []
+start = default_timer()
+
+for j in range(NUMBER_SIMULATIONS):
+    a_simulation = eso.experimentSimulationObject(
+        control_mean,
+        control_std,
+        itc_samples[j],
+        is_rate,
+        number_conditions,
+        allocation_list,
+        min_test_days,
+        max_test_days,
+        max_test_n,
+        max_volume_year,
+    )
+
+    a_simulation.calculate_expected_loss(risk_type)
+    a_simulation.update_potential_outcomes_at_each_test_day()
+    a_simulation.calculate_optimal_stopping_values(threshold_values, risk_type)
+    a_simulation.calculate_llr(index_to_control_planned)
+    a_simulation.calculate_sequential_stopping_values(alpha, power)
+    a_simulation.calculate_z_scores(actual_fixed_days=actual_fixed_days)
+
+    a_simulation.calculate_fixed_stopping_values(
+        z_critical=z_critical,
+        test_direction=metric_direction,
+        actual_fixed_days=actual_fixed_days,
+    )
+    all_simulations.append(a_simulation)
+
+
+bayesian_analysis_dictionary_results = (
+            eso.analyze_experiment_simulations_bayesian(
+                all_simulations, metric_direction
+            )
+        )
+sequential_analysis_dictionary_results = (
+    eso.analyze_experiment_simulations_sequential(all_simulations)
+)
+fixed_analysis_dictionary_results = eso.analyze_experiment_simulations_fixed(
+    all_simulations
+)
+
+stop = default_timer()
+#print(len(bayesian_analysis_dictionary_results["all_means"]))
+#print(len(threshold_values))
+#print(f"simulation run-time: {stop-start:.2f} secs")
+
+
+potentials = bayesian_analysis_dictionary_results["all_means"]
+times = bayesian_analysis_dictionary_results["run_times"]
+winners = bayesian_analysis_dictionary_results["winner_rate"]
+
+def format_potential(p, is_rate: bool) -> str:
+    return f"{p:.3%}" if is_rate else f"{p:.3f}"
+figure_text = [
+            f"Risk Threshold: {format_potential(v, is_rate)} <br>"
+            f"Projected Mean: {format_potential(p, is_rate)} <br>"
+            f"Expected # of Trials: {int(t):,} <br>"
+            f"Selected Best Condition: {w:.2%}"
+            for v, 
+              t,
+               w,
+                p 
+                in zip(threshold_values, 
+            times, 
+            winners, 
+            potentials
+            )
+        ]
+
+
+
+threshold_figure = go.Figure()
+threshold_figure.add_trace(
+    go.Scatter(
+        x=threshold_values,
+        y=potentials,
+        text=figure_text,
+        mode="lines",
+        showlegend=False,
+        line_shape="spline",
+        hoverlabel=dict(font=dict(size=21)),
+        line=dict(width=2),
+        hoverinfo="text",
+    )
+)
+
+
+if metric_direction == "increase":
+  optimal_index = argmax(potentials)
+
+else:
+  optimal_index = argmin(potentials)
+optimal_risk_level = threshold_values[optimal_index]
+optimal_index = argmin(abs(array(threshold_values) - optimal_risk_level))
+
+
+threshold_figure.add_trace(
+  go.Scatter(
+      x=[optimal_risk_level],
+      y=[potentials[optimal_index]],
+      mode="markers",
+      showlegend = False,
+      marker=dict(
+    size=16,
+    color="#2ECC71",  # soft green
+    symbol="x"
+)
+,
+      # name=f"Experiment {'Maximum' if metric_direction == 'increase' else 'Minimum'}",
+      name="Optimal Threshold",
+      hoverinfo="skip",
+  )
+)
+
+
+
+tickformat = ".3%" if is_rate else ".3f"
+threshold_figure.update_layout(
+    title=dict(
+        text="<b>Projected Mean by Risk Threshold</b>",
+        font=dict(size=24),
+        x=0.5,
+        xanchor="center",
+    ),
+    margin=dict(l=110, r=50, b=55, t=45, pad=1),
+    xaxis=dict(
+        # type="log",
+        tickformat=tickformat,
+        #tickvals=tickvals.tolist(),
+        #ticktext=ticktext,
+        title="Risk Threshold",
+        title_font=dict(size=21),
+        tickfont=dict(size=16),
+    ),
+    yaxis=dict(
+        tickformat=tickformat,
+        title="Projected Mean @ Year-End",
+        title_font=dict(size=21),
+        tickfont=dict(size=16),
+    ),
+    showlegend=True,
+)
+
+pass
+
+```
+
+
+## Optimization Curve
+
+With Bayesian testing, I don’t get an arbitrary threshold — I get a curve. It maps projected year-end value across the test and post-test populations for each candidate risk threshold. This lets me see how different levels of risk tolerance actually perform — and choose the one that maximizes long-term business value. 
+
+```{python}
+#| echo: false
+#| code-fold: true
+#| fig-cap: "❎ represents the Optimal Risk Threshold because it maximizes expected # of conversions @ year-end"
+threshold_figure.show()
+
+```
+
+## Key Take-aways
+
+1. Lower thresholds are more cautious; higher ones accept more risk to enable faster decisions. Hover over the curve to see how `Expected # of trials` decreases with higher thresholds.
+    - You can choose to run a faster experiment, but you'll have to sacrifice some expected value. 
+2. Hover over the curve to see that Bayesian Analysis yields a seemingly concerning 50% accuracy rate --- `Selected Best Condition`, regardless of Risk Threshold. This is because the mean of treatment effects is centered at 100.
+    - Sneak Peek: Do we expect better or worse accuracy from Significance Tests? <span style="font-size: 2em;">😉</span>
+
+## Compare vs Significance
+
+Let's compare what happens when we analyze those same simulations with _**Significance Testing**_.
+Let's assume significance threshold of **α = 0.05**, statistical power of **1 – β = 0.80**, and **mean detectable effect = 101**. 
