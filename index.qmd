@@ -49,7 +49,7 @@ But missing a true winner? That’s a lost opportunity — and sometimes, **a co
 
 The moment you ask, “What’s the expected value of this decision?”, you’ve entered Bayesian territory. You stop obsessing over p-values and start focusing on the projected impact of your actions.
 
-Bayesian testing isn’t a new set of formulas — it’s a philosophical shift. One that aligns statistical thinking with how businesses actually need to make decisions.
+Bayesian testing isn’t a new set of formulas — it’s a philosophical shift. One that aligns probabilistic thinking with how businesses actually need to make decisions.
 
 
 ## Aligned Costs
@@ -68,6 +68,8 @@ This simple formula captures two critical ideas:
 
 Instead of asking, “Is this result statistically significant?”, we ask, “What’s the cost of making the wrong call?”
 Expected loss is expressed in the same units as the underlying metric. For conversion rate, we will use `%`, which refers to `% pts`.
+
+Going forward we refer to _expected loss_ as `Risk`. We will use `Risk` to stop our experiments and seek to determine the optimal level of `Risk` to bear for any given experiment design.
 
 # A Simulation Framework
 ```{python}
@@ -144,8 +146,8 @@ Each candidate represents a different level of risk tolerance: lower thresholds 
 ## Simulation Logic
 
 1. For each simulation, and each day after `min(test_days)`:
-   - Compute **expected loss** for both control and treatment conditions.
-   - Compare each condition’s expected loss to the candidate risk threshold.
+   - Compute **Risk (expected loss)** for both control and treatment conditions.
+   - Compare each condition’s **Risk** to the candidate risk threshold.
 
 2. Decision rules:
    - If **only one** condition breaches the threshold → select it as the winner.
