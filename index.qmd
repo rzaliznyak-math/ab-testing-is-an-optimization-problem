@@ -284,7 +284,7 @@ e_gain, e_loss = expected_loss(
 )
 max_threshold = 0.5 * max(e_gain, e_loss)
 
-n_increments = 40
+n_increments = 120
 step = max_threshold / (n_increments if n_increments > 0 else 0)
 threshold_values = [round(i * step, 10) for i in range(n_increments + 1)]
 
