@@ -343,6 +343,14 @@ potentials = bayesian_analysis_dictionary_results["all_means"]
 times = bayesian_analysis_dictionary_results["run_times"]
 winners = bayesian_analysis_dictionary_results["winner_rate"]
 
+sprt_potentials = sequential_analysis_dictionary_results["sequential_potential_mean"],
+sprt_winners = sequential_analysis_dictionary_results["sequential_winner_rate"],
+sprt_times = sequential_analysis_dictionary_results["sequential_run_times"],
+fixed_potentials = fixed_analysis_dictionary_results["fixed_potential_mean"],
+fixed_winners = fixed_analysis_dictionary_results["fixed_winner_rate"],
+fixed_times = actual_fixed_days
+
+
 def format_potential(p, is_rate: bool) -> str:
     return f"{p:.3%}" if is_rate else f"{p:.3f}"
 figure_text = [
@@ -463,3 +471,45 @@ threshold_figure.show()
 
 Let's compare what happens when we analyze those same simulations with _**Significance Testing**_.
 Let's assume significance threshold of **α = 0.05**, statistical power of **1 – β = 0.80**, and **mean detectable effect = 101**. 
+
+
+```{python}
+#| echo: false
+#| output: true
+
+import pandas as pd
+
+df = pd.DataFrame({
+    "Metric": ["Projected Mean @ Year-End", "Selected Best Condition", "Mean Run Time"],
+    "Bayesian": [potentials[optimal_index],winners[optimal_index],times[optimal_index]/number_daily_visitors],
+    "SPRT": [
+        sequential_analysis_dictionary_results["sequential_potential_mean"],
+        sequential_analysis_dictionary_results["sequential_winner_rate"],
+        sequential_analysis_dictionary_results["sequential_run_times"]
+    ],
+    "Fixed": [
+        fixed_analysis_dictionary_results["fixed_potential_mean"],
+        fixed_analysis_dictionary_results["fixed_winner_rate"],
+        actual_fixed_days
+    ]
+})
+
+sprt_marginal = max_volume_year * (
+    sequential_analysis_dictionary_results["sequential_potential_mean"] - control_mean
+)
+fixed_marginal = max_volume_year * (
+    fixed_analysis_dictionary_results["fixed_potential_mean"] - control_mean
+)
+bayes_marginal = max_volume_year * (potentials[optimal_index] - control_mean)
+
+# Append the new row
+df.loc[len(df.index)] = [
+    "Marginal Events vs No Test",
+    bayes_marginal,
+    sprt_marginal,
+    fixed_marginal
+]
+
+from IPython.display import display
+display(df.style.hide(axis="index"))  # Requires Pandas ≥1.4.0
+```
