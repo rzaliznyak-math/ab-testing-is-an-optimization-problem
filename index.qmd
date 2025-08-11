@@ -16,9 +16,9 @@ format:
 
 Significance testing, as traditionally applied in AB experiments, is often misaligned with business goals. While these statistical methods aim to minimize false positives, real business impact is frequently driven by avoiding false negatives — missed opportunities to create value.
 
-Below I show why significance thresholds like α = 0.05 are arbitrary and distort decision-making. I introduce Bayesian testing as a more practical alternative, and demonstrate — through discussion and simulation — how it better supports value-driven experimentation.
+Below I show why significance thresholds like α = 0.05 are arbitrary and harm decision-making. I introduce Bayesian testing as a more practical alternative, and demonstrate through simulation how it better supports value-driven experimentation.
 
-By reframing AB testing around expected value and decision quality, I move beyond rigid thresholds toward practical impact — treating experimentation as an optimization problem, not just a statistical exercise.
+You'll see that focusing on the expected value of our decisions is a far more profitable strategy than chasing statistical significance.
 
 # Significance Testing
 
@@ -28,7 +28,7 @@ By reframing AB testing around expected value and decision quality, I move beyon
 
 In these fields, false positives are extremely costly — both reputationally and scientifically. That’s why physicists often require 5-sigma evidence — about a 1 in 3.5 million chance that the result is a fluke.
 
-But significance testing says nothing about the most important business questions:
+But significance testing isn't designed to answer the more important business question:
 
 Which decision has the highest expected return — ending the test, running it longer, or taking action now?
 
@@ -49,41 +49,35 @@ But missing a true winner? That’s a lost opportunity — and sometimes, **a co
 
 The moment you ask, “What’s the expected value of this decision?”, you’ve entered Bayesian territory. You stop obsessing over p-values and start focusing on the projected impact of your actions.
 
-Bayesian testing isn’t a new set of formulas — it’s a philosophical shift. One that aligns probabilistic thinking with how businesses actually need to make decisions.
+Bayesian testing isn’t a new set of formulas — it’s a mindset shift. One that aligns probabilistic thinking with how businesses actually need to make decisions.
 
 
 ## Aligned Costs
 
-We abandon our obsession with p-values and statistical power by introducing the statistic _expected loss_ as our stopping criterion.
-
-Expected loss quantifies the risk of a bad decision as:
+We use expected loss as our stopping criterion — a measure that quantifies the risk of making the wrong decision, combining both the likelihood of harm and its expected magnitude:
 
 $$
 \text{Expected Loss} = \Pr(\text{harm}) \times \mathbb{E}[\text{Magnitude of Harm}]
 $$
 
-This simple formula captures two critical ideas:
-- The **likelihood** of a harmful outcome,
-- And its **average cost** when it occurs.
 
-Instead of asking, “Is this result statistically significant?”, we ask, “What’s the cost of making the wrong call?”
-Expected loss is expressed in the same units as the underlying metric. For conversion rate, we will use `%`, which refers to `% pts`.
+Rather than ask, “Is this statistically significant?”, we ask, “What’s the cost of making the wrong call?” This cost is expressed in the same units as the metric itself — for conversion rate, in percentage points.
 
-Going forward we refer to _expected loss_ as `Risk`. We will use `Risk` to stop our experiments and seek to determine the optimal level of `Risk` to bear for any given experiment design.
+We’ll refer to expected loss as `Risk`, and we’ll search for the optimal level of Risk to bear for any given experiment design — seeking to balance caution with speed to maximize long-term value.
 
 # A Simulation Framework
 ```{python}
-NUMBER_SIMULATIONS = int(5e4)
+NUMBER_SIMULATIONS = int(5e2)
 ```
 
+To evaluate these ideas under real-world constraints — limited time, finite traffic, and the tradeoff between speed and confidence — I simulate `{python} f"{NUMBER_SIMULATIONS:,}"` randomized AB tests with equal allocation to control and treatment.
 
-To evaluate these principles under real-world constraints—limited time, limited traffic, and the tradeoff between speed and confidence—I will simulate `{python} f"{NUMBER_SIMULATIONS:,}"` randomized AB tests with equal allocation to control and treatment groups.
-
-The beauty of the framework is that we know the truth coded into the simulations, but the analysis methods are completely blind to the truth. Each method, Bayesian or Significance, will try their best. Only after they are done, we analyze their performance.
+The key advantage of this framework is that we know the true effect behind each experiment, while the analysis methods (Bayesian and Significance) operate blindly, vulnerable to noise and randomness. Only after all decisions are made do we compare their outcomes — measuring accuracy, timing, and business value.
 
 ## Experiment Design
 
-Each of the `{python} f"{NUMBER_SIMULATIONS:,}"` simulated experiments will span up to 20 days, with traffic split evenly between control and treatment groups. Each day, users are randomly assigned to a condition in a 50/50 ratio, and conversion outcomes are sampled using a binomial process. This introduces natural day-to-day variation, allowing the simulation to reflect how decisions evolve over time as new data accumulates.
+Each of the `{python} f"{NUMBER_SIMULATIONS:,}"` experiments runs for up to 20 days, with traffic split 50/50 between control and treatment.
+Users are randomly assigned daily, and outcomes are sampled using a binomial process — introducing natural variation that mimics how real experiments unfold over time.
 
 
 | Min (Test Days) | Max (Test Days) | Max (Test N) | Post Test N | Conversion Rate |
@@ -95,10 +89,9 @@ Although the **Control** group has a true conversion rate of 65%, observed resul
 
 ## Expected Effects
 
-Each of the `{python} f"{NUMBER_SIMULATIONS:,}"` simulated experiments draws a random treatment effect from the distribution shown below — a normal distribution centered at 100 with a standard error of 0.5. This models the natural variability in real-world experiments, where most effects are small, large lifts are uncommon, and we never know the complete truth.
-Later we can consider swapping in other distributions like Laplce for fatter tails.
+Each experiment draws a treatment effect from a normal distribution centered at 100 with a standard error of 0.5 — modeling the natural variability seen in real-world tests, where small effects are common and large lifts are rare.
 
-Just like the control group varies due to sampling, a treatment programmed to be better (ITC > 100) may still underperform or overperform in any given simulation.
+Even when a treatment is truly better (i.e., ITC > 100), it can underperform in a given simulation due to random variation — just as it might in practice.
 
 ```{python}
 #| echo: false
@@ -136,16 +129,18 @@ itc_fig.show()
 
 ```
 
+> Later We can swap in other distributions later, like Laplace.
+
 ## Candidate Risk Thresholds
 
-A risk threshold defines how much expected loss I'm willing to tolerate before stopping the test and declaring a winner. To explore tradeoffs between speed and accuracy, I simulate decisions using a range of candidate thresholds (e.g., 0.01%, 0.02%, ..., 0.10%).
-
-Each candidate represents a different level of risk tolerance: lower thresholds are more cautious, while higher ones allow for faster decisions with greater uncertainty.
+A risk threshold defines how much expected loss we’re willing to tolerate before stopping the test and choosing a winner.
+To explore tradeoffs between speed and precision, we simulate decisions across a range of candidate thresholds — eg (from 0.01% to 0.10%).
+Lower thresholds are more conservative, delaying action until the risk is minimal. Higher thresholds allow faster decisions but accept more uncertainty.
 
 
 ## Simulation Logic
 
-1. For each simulation, and each day after `min(test_days)`:
+1. For each simulation, and each day after `Min (Test Days)`:
    - Compute **Risk (expected loss)** for both control and treatment conditions.
    - Compare each condition’s **Risk** to the candidate risk threshold.
 
@@ -460,11 +455,11 @@ threshold_figure.show()
 
 ```
 
-## Key Take-aways
+## Insights
 
-1. Lower thresholds are more cautious; higher ones accept more risk to enable faster decisions. Hover over the curve to see how `Expected # of trials` decreases with higher thresholds.
+1. Lower thresholds are more cautious; higher ones accept more risk to enable faster decisions. Hover over the curve to see how `Expected # of trials` decreases with higher thresholds.<br>
     - You can choose to run a faster experiment, but you'll have to sacrifice some expected value. 
-2. Hover over the curve to see that Bayesian Analysis yields a seemingly concerning 50% accuracy rate --- `Selected Best Condition`, regardless of Risk Threshold. This is because the mean of treatment effects is centered at 100.
+2. Bayesian Analysis yields 50% `Selected Best Condition` rate because the mean of treatment effects is centered at 100, regardless of Risk Threshold.
     - Sneak Peek: Do we expect better or worse accuracy from Significance Tests? <span style="font-size: 2em;">😉</span>
 
 ## Compare vs Significance
@@ -476,12 +471,21 @@ Let's assume significance threshold of **α = 0.05**, statistical power of **1�
 ```{python}
 #| echo: false
 #| output: true
-
 import pandas as pd
+from IPython.display import display
 
+# Build the core DataFrame
 df = pd.DataFrame({
-    "Metric": ["Projected Mean @ Year-End", "Selected Best Condition", "Mean Run Time"],
-    "Bayesian": [potentials[optimal_index],winners[optimal_index],times[optimal_index]/number_daily_visitors],
+    "Metric": [
+        "Projected Mean @ Year-End",
+        "Selected Best Condition",
+        "Mean Run Time"
+    ],
+    "Bayesian": [
+        potentials[optimal_index],
+        winners[optimal_index],
+        times[optimal_index] / number_daily_visitors
+    ],
     "SPRT": [
         sequential_analysis_dictionary_results["sequential_potential_mean"],
         sequential_analysis_dictionary_results["sequential_winner_rate"],
@@ -494,15 +498,18 @@ df = pd.DataFrame({
     ]
 })
 
+# Calculate Marginal Events
 sprt_marginal = max_volume_year * (
     sequential_analysis_dictionary_results["sequential_potential_mean"] - control_mean
 )
 fixed_marginal = max_volume_year * (
     fixed_analysis_dictionary_results["fixed_potential_mean"] - control_mean
 )
-bayes_marginal = max_volume_year * (potentials[optimal_index] - control_mean)
+bayes_marginal = max_volume_year * (
+    potentials[optimal_index] - control_mean
+)
 
-# Append the new row
+# Add marginal row
 df.loc[len(df.index)] = [
     "Marginal Events vs No Test",
     bayes_marginal,
@@ -510,8 +517,31 @@ df.loc[len(df.index)] = [
     fixed_marginal
 ]
 
-from IPython.display import display
-display(df.style.hide(axis="index"))  # Requires Pandas ≥1.4.0
+# Format values row-by-row based on Metric
+formatted_df = df.copy()
+
+for idx, row in df.iterrows():
+    metric = row["Metric"]
+    if metric in ["Projected Mean @ Year-End"]:
+        formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:.3%}"
+        formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:.3%}"
+        formatted_df.at[idx, "Fixed"] = f"{row['Fixed']:.3%}"
+    elif metric in [ "Selected Best Condition"]:
+        formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:.2%}"
+        formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:.2%}"
+        formatted_df.at[idx, "Fixed"] = f"{row['Fixed']:.2%}"
+    elif metric == "Marginal Events vs No Test":
+        formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:,.0f}"
+        formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:,.0f}"
+        formatted_df.at[idx, "Fixed"] = f"{row['Fixed']:,.0f}"
+    else:  # Mean Run Time
+        formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:.2f}"
+        formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:.2f}"
+        formatted_df.at[idx, "Fixed"] = f"{row['Fixed']:.2f}"
+
+# Display without index
+display(formatted_df.style.hide(axis="index"))
+
 ```
 
 # Glossary
