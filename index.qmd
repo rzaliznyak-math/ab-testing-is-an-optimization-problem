@@ -513,3 +513,34 @@ df.loc[len(df.index)] = [
 from IPython.display import display
 display(df.style.hide(axis="index"))  # Requires Pandas ≥1.4.0
 ```
+
+# Glossary
+
+::: {.callout-tip collapse="true" icon="" title="Significance Testing Glossary"}
+
+### α (Alpha)
+- **What it is**: The *significance level* — the probability of a **false positive** (Type I error).
+- **Typical value**: `0.05` (or 5%)
+- **In context**: If `α = 0.05`, there’s a 5% chance you’ll wrongly conclude a difference exists when it doesn’t.
+
+---
+
+### β (Beta)
+- **What it is**: The probability of a **false negative** (Type II error).
+- **Power = 1 – β**: A common target is `80%` power, meaning a `20%` chance of missing a true effect.
+- **In context**: A high β means you risk overlooking a variant that’s actually better — lost upside.
+
+---
+
+### SPRT (Sequential Probability Ratio Test)
+- **What it is**: A method that checks for significance **continuously** during the test.
+- **Benefit**: Can stop experiments early if strong evidence accumulates.
+- **In context**: Faster than fixed-duration tests, but may be overly conservative depending on thresholds.
+
+---
+
+### Mean Detectable Effect
+- **What it is**: The *smallest effect size* you expect to detect reliably in your test.
+- **In context**: If you set this to `1%`, your test is designed to detect changes that are at least that big — smaller changes might go unnoticed.
+
+:::
