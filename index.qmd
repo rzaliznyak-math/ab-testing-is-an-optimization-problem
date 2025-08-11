@@ -73,7 +73,7 @@ Going forward we refer to _expected loss_ as `Risk`. We will use `Risk` to stop 
 
 # A Simulation Framework
 ```{python}
-NUMBER_SIMULATIONS = int(1e4)
+NUMBER_SIMULATIONS = int(5e4)
 ```
 
 
