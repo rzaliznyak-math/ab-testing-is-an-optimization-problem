@@ -71,7 +71,7 @@ We’ll refer to expected loss as `Risk`, and we’ll search for the optimal lev
 
 # A Simulation Framework
 ```{python}
-NUMBER_SIMULATIONS = int(5e4)
+NUMBER_SIMULATIONS = int(1e5)
 ```
 
 To evaluate these ideas under real-world constraints — limited time, finite traffic, and the tradeoff between speed and confidence — I simulate `{python} f"{NUMBER_SIMULATIONS:,}"` randomized AB tests with equal allocation to control and treatment.
@@ -101,10 +101,11 @@ Even when a treatment is truly better (i.e., ITC > 100), it can underperform in 
 #| echo: false
 #| code-fold: true
 #| fig-cap: "Normal Distribution with μ = 100 and σ = 0.5."
-from numpy.random import laplace, normal
+from numpy.random import laplace, normal, seed
 from utilities.distributions import draw_distribution_classic
 INTUIT_RED = "#bd0707"
 INTUIT_BLUE = "#0177c9"
+seed(42)
 
 distribution_type = "normal"
 #distribution_type = "laplace"
@@ -186,6 +187,13 @@ This process lets me estimate how each candidate risk threshold shapes **decisio
 
 # Results
 
+<h><b>Definitions</b></h>
+
+`Projected Mean @ Year-End`: The average performance you'd expect if you ran this test and deployed the winning variant — including both the test period and the post-test rollout; reflects thet total impact of the experiment.
+
+`Marginal Events Vs No Test`: The additional number of conversions we expect to gain by running the experiment, compared to doing nothing at all.
+
+> Marginal Events vs No Test is directly derived from the Projected Mean @ Year-End. It quantifies the gain by multiplying the projected lift over control by the total number of users — turning a small percentage improvement into a tangible number of additional conversions.
 
 ```{python}
 from numpy import mean, abs, mean, minimum, maximum, array
@@ -393,14 +401,21 @@ else:
   optimal_index = argmin(potentials)
 optimal_risk_level = threshold_values[optimal_index]
 optimal_index = argmin(abs(array(threshold_values) - optimal_risk_level))
+optimal_potential = potentials[optimal_index]
+optimal_run_time = times[optimal_index]
+
+expedited_risk_level = 4*optimal_risk_level
+expedited_index = argmin(abs(array(threshold_values) - expedited_risk_level))
+expedited_potential = potentials[expedited_index]
+expedited_run_time = times[expedited_index]
 
 
 threshold_figure.add_trace(
   go.Scatter(
       x=[optimal_risk_level],
-      y=[potentials[optimal_index]],
+      y=[optimal_potential],
       mode="markers",
-      showlegend = False,
+      showlegend = True,
       marker=dict(
     size=16,
     color="#2ECC71",  # soft green
@@ -408,7 +423,25 @@ threshold_figure.add_trace(
 )
 ,
       # name=f"Experiment {'Maximum' if metric_direction == 'increase' else 'Minimum'}",
-      name="Optimal Threshold",
+      name="Optimal",
+      hoverinfo="skip",
+  )
+)
+
+threshold_figure.add_trace(
+  go.Scatter(
+      x=[expedited_risk_level],
+      y=[expedited_potential],
+      mode="markers",
+      showlegend = True,
+      marker=dict(
+    size=16,
+    color="orange",  # soft green
+    symbol="circle-dot"
+)
+,
+      # name=f"Experiment {'Maximum' if metric_direction == 'increase' else 'Minimum'}",
+      name="Expedited",
       hoverinfo="skip",
   )
 )
@@ -454,19 +487,59 @@ With Bayesian testing, I don’t get an arbitrary threshold — I get a curve. I
 ```{python}
 #| echo: false
 #| code-fold: true
-#| fig-cap: "❎ represents the Optimal Risk Threshold because it maximizes expected # of conversions @ year-end"
+#| fig-cap: "❎ represents the Optimal Risk Threshold because it maximizes expected # of conversions @ year-end."
 threshold_figure.show()
 
 ```
-<br>
 
-<h>Definitions</h>
+```{python}
+import pandas as pd
+from IPython.display import display
 
-`Projected Mean @ Year-End`: The average performance you'd expect if you ran this test and deployed the winning variant — including both the test period and the post-test rollout; reflects thet total impact of the experiment.
+# Example data
+df = pd.DataFrame({
+    "Threshold": [optimal_risk_level, expedited_risk_level],
+    "Projected Mean": [optimal_potential, expedited_potential],
+    "Expected Trials": [optimal_run_time, expedited_run_time]
+}, index=["optimal", "expedited"])
 
-`Marginal Events Vs No Test`: The additional number of conversions we expect to gain by running the experiment, compared to doing nothing at all.
+# First row runtime
+first_runtime = df["Expected Trials"].iloc[0]
 
-> Marginal Events vs No Test is directly derived from the Projected Mean @ Year-End. It quantifies the gain by multiplying the projected lift over control by the total number of users — turning a small percentage improvement into a tangible number of additional conversions.
+# Time Savings vs first row (empty for first)
+df["Time Savings"] = [
+    "" if i == 0 else (first_runtime - val) / first_runtime
+    for i, val in enumerate(df["Expected Trials"])
+]
+
+# More Experiments (empty for first)
+df["More Experiments"] = [
+    "" if i == 0 else (first_runtime / val) - 1
+    for i, val in enumerate(df["Expected Trials"])
+]
+
+# Format columns
+df["Threshold"] = df["Threshold"].apply(lambda x: f"{x:.3%}")
+df["Projected Mean"] = df["Projected Mean"].apply(lambda x: f"{x:.3%}")
+df["Expected Trials"] = df["Expected Trials"].apply(lambda x: f"{x:,.0f}")
+df["Time Savings"] = df["Time Savings"].apply(lambda x: f"{x:.2%}" if x != "" else "")
+df["More Experiments"] = df["More Experiments"].apply(lambda x: f"{x:.2%}" if x != "" else "")
+
+
+df = df.drop(columns=["More Experiments"])
+# Display without index
+display(df.style.hide(axis="index"))
+
+
+```
+<p>
+
+ - Bayesian Test Design allows me to choose any Risk Threshold and know exactly how it affects my expected value.
+ - In this case, we can take on 4x the optimal level of risk and we barely compromise our `Projected Mean @ year-end`.
+
+We might choose **Expedited** over **Optimal** because the experiment will run faster. Each subsequent experiments brings in its own value.
+
+
 
 ## Insights
 
@@ -489,24 +562,27 @@ How does this legacy approach stack up against Bayesian testing in practice?
 #| echo: false
 #| output: true
 #| fig-cap: "With true effects centered at 100; SPRT and Fixed rarely detect the best condition."
-import pandas as pd
-from IPython.display import display
 
-# Build the core DataFrame
-import pandas as pd
-from IPython.display import display
 
 # Build initial DataFrame in arbitrary order (we’ll reorder later)
+import pandas as pd
+from IPython.display import display
+
 df = pd.DataFrame({
     "Metric": [
         "Projected Mean @ Year-End",
         "Selected Best Condition",
         "Mean Run Time"
     ],
-    "Bayesian": [
+    "Bayes (Optimal)": [
         potentials[optimal_index],
         winners[optimal_index],
         times[optimal_index] / number_daily_visitors
+    ],
+    "Bayes (Expedited)": [
+        potentials[expedited_index],
+        winners[expedited_index],
+        times[expedited_index] / number_daily_visitors
     ],
     "SPRT": [
         sequential_analysis_dictionary_results["sequential_potential_mean"],
@@ -520,21 +596,25 @@ df = pd.DataFrame({
     ]
 })
 
-# Compute Marginal Events
+# --- Marginal Events vs No Test (per approach) ---
 sprt_marginal = max_volume_year * (
     sequential_analysis_dictionary_results["sequential_potential_mean"] - control_mean
 )
 fixed_marginal = max_volume_year * (
     fixed_analysis_dictionary_results["fixed_potential_mean"] - control_mean
 )
-bayes_marginal = max_volume_year * (
+bayes_optimal_marginal = max_volume_year * (
     potentials[optimal_index] - control_mean
+)
+bayes_expedited_marginal = max_volume_year * (
+    potentials[expedited_index] - control_mean
 )
 
 # Append marginal row
 df.loc[len(df.index)] = [
     "Marginal Events vs No Test",
-    bayes_marginal,
+    bayes_optimal_marginal,
+    bayes_expedited_marginal,
     sprt_marginal,
     fixed_marginal
 ]
@@ -548,34 +628,41 @@ row_order = [
 ]
 df = df.set_index("Metric").loc[row_order].reset_index()
 
-# Format based on row type
+# --- Formatting ---
 formatted_df = df.copy()
 
 for idx, row in df.iterrows():
     metric = row["Metric"]
-    if metric in [ "Selected Best Condition"]:
-        formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:.2%}"
+    if metric in ["Selected Best Condition"]:
+        formatted_df.at[idx, "Bayes (Optimal)"] = f"{row['Bayes (Optimal)']:.2%}"
+        formatted_df.at[idx, "Bayes (Expedited)"] = f"{row['Bayes (Expedited)']:.2%}"
         formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:.2%}"
         formatted_df.at[idx, "Fixed"] = f"{row['Fixed']:.2%}"
+
     elif metric in ["Projected Mean @ Year-End"]:
-        formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:.3%}"
+        formatted_df.at[idx, "Bayes (Optimal)"] = f"{row['Bayes (Optimal)']:.3%}"
+        formatted_df.at[idx, "Bayes (Expedited)"] = f"{row['Bayes (Expedited)']:.3%}"
         formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:.3%}"
         formatted_df.at[idx, "Fixed"] = f"{row['Fixed']:.3%}"
+
     elif metric == "Marginal Events vs No Test":
-        formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:,.0f}"
+        formatted_df.at[idx, "Bayes (Optimal)"] = f"{row['Bayes (Optimal)']:,.0f}"
+        formatted_df.at[idx, "Bayes (Expedited)"] = f"{row['Bayes (Expedited)']:,.0f}"
         formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:,.0f}"
         formatted_df.at[idx, "Fixed"] = f"{row['Fixed']:,.0f}"
-    else:
-        bayes_raw = row["Bayesian"] * number_daily_visitors
+
+    else:  # Mean Run Time
+        bayes_opt_raw = row["Bayes (Optimal)"] * number_daily_visitors
+        bayes_exp_raw = row["Bayes (Expedited)"] * number_daily_visitors
         sprt_raw = row["SPRT"] * number_daily_visitors
         fixed_raw = row["Fixed"] * number_daily_visitors
 
-        formatted_df.at[idx, "Bayesian"] = f"N = {bayes_raw:,.0f} ({row['Bayesian']:.2f} days)"
+        formatted_df.at[idx, "Bayes (Optimal)"] = f"N = {bayes_opt_raw:,.0f} ({row['Bayes (Optimal)']:.2f} days)"
+        formatted_df.at[idx, "Bayes (Expedited)"] = f"N = {bayes_exp_raw:,.0f} ({row['Bayes (Expedited)']:.2f} days)"
         formatted_df.at[idx, "SPRT"] = f"N = {sprt_raw:,.0f} ({row['SPRT']:.2f} days)"
         formatted_df.at[idx, "Fixed"] = f"N = {fixed_raw:,.0f} ({row['Fixed']:,.0f} days)"
 
-
-
+formatted_df = formatted_df.drop(columns=["Bayes (Expedited)"])
 # Display without index
 display(formatted_df.style.hide(axis="index"))
 
