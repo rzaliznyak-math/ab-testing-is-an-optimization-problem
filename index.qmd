@@ -67,7 +67,7 @@ We’ll refer to expected loss as `Risk`, and we’ll search for the optimal lev
 
 # A Simulation Framework
 ```{python}
-NUMBER_SIMULATIONS = int(5e2)
+NUMBER_SIMULATIONS = int(5e4)
 ```
 
 To evaluate these ideas under real-world constraints — limited time, finite traffic, and the tradeoff between speed and confidence — I simulate `{python} f"{NUMBER_SIMULATIONS:,}"` randomized AB tests with equal allocation to control and treatment.
@@ -457,17 +457,18 @@ threshold_figure.show()
 
 ## Insights
 
-1. Lower thresholds are more cautious; higher ones accept more risk to enable faster decisions. Hover over the curve to see how `Expected # of trials` decreases with higher thresholds.<br>
-    - You can choose to run a faster experiment, but you'll have to sacrifice some expected value. 
+1. Lower thresholds are more cautious; higher ones accept more risk to enable faster decisions. Hover over the curve to see how `Expected # of trials` decreases with higher thresholds. <br><br>
+    - You can choose to run a faster experiment, but you'll have to sacrifice some expected value.  <br><br>
 2. Bayesian Analysis yields 50% `Selected Best Condition` rate because the mean of treatment effects is centered at 100, regardless of Risk Threshold.
     - Sneak Peek: Do we expect better or worse accuracy from Significance Tests? <span style="font-size: 2em;">😉</span>
 
-## Compare vs Significance
+## Bayes Vs. Significance
 
-Let's compare what happens when we analyze those same simulations with _**Significance Testing**_.
-Let's assume significance threshold of **α = 0.05**, statistical power of **1 – β = 0.80**, and **mean detectable effect = 101**. 
+Let’s see how the same `{python} f"{NUMBER_SIMULATIONS:,}"` simulations perform under traditional significance testing. We’ll use a standard setup: α = 0.05, 80% power, and a detectable effect of 101.
 
+How does this legacy approach stack up against Bayesian testing in practice?
 
+### Comparison
 ```{python}
 #| echo: false
 #| output: true
@@ -475,6 +476,10 @@ import pandas as pd
 from IPython.display import display
 
 # Build the core DataFrame
+import pandas as pd
+from IPython.display import display
+
+# Build initial DataFrame in arbitrary order (we’ll reorder later)
 df = pd.DataFrame({
     "Metric": [
         "Projected Mean @ Year-End",
@@ -498,7 +503,7 @@ df = pd.DataFrame({
     ]
 })
 
-# Calculate Marginal Events
+# Compute Marginal Events
 sprt_marginal = max_volume_year * (
     sequential_analysis_dictionary_results["sequential_potential_mean"] - control_mean
 )
@@ -509,7 +514,7 @@ bayes_marginal = max_volume_year * (
     potentials[optimal_index] - control_mean
 )
 
-# Add marginal row
+# Append marginal row
 df.loc[len(df.index)] = [
     "Marginal Events vs No Test",
     bayes_marginal,
@@ -517,16 +522,21 @@ df.loc[len(df.index)] = [
     fixed_marginal
 ]
 
-# Format values row-by-row based on Metric
+# Reorder rows to: Selected Best, Marginal, Projected Mean, Run Time
+row_order = [
+    "Selected Best Condition",
+    "Marginal Events vs No Test",
+    "Projected Mean @ Year-End",
+    "Mean Run Time"
+]
+df = df.set_index("Metric").loc[row_order].reset_index()
+
+# Format based on row type
 formatted_df = df.copy()
 
 for idx, row in df.iterrows():
     metric = row["Metric"]
-    if metric in ["Projected Mean @ Year-End"]:
-        formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:.3%}"
-        formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:.3%}"
-        formatted_df.at[idx, "Fixed"] = f"{row['Fixed']:.3%}"
-    elif metric in [ "Selected Best Condition"]:
+    if metric in ["Projected Mean @ Year-End", "Selected Best Condition"]:
         formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:.2%}"
         formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:.2%}"
         formatted_df.at[idx, "Fixed"] = f"{row['Fixed']:.2%}"
@@ -534,15 +544,36 @@ for idx, row in df.iterrows():
         formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:,.0f}"
         formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:,.0f}"
         formatted_df.at[idx, "Fixed"] = f"{row['Fixed']:,.0f}"
-    else:  # Mean Run Time
-        formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:.2f}"
-        formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:.2f}"
-        formatted_df.at[idx, "Fixed"] = f"{row['Fixed']:.2f}"
+    else:
+        bayes_raw = row["Bayesian"] * number_daily_visitors
+        sprt_raw = row["SPRT"] * number_daily_visitors
+        fixed_raw = row["Fixed"] * number_daily_visitors
+
+        formatted_df.at[idx, "Bayesian"] = f"N = {bayes_raw:,.0f} ({row['Bayesian']:.2f} days)"
+        formatted_df.at[idx, "SPRT"] = f"N = {sprt_raw:,.0f} ({row['SPRT']:.2f} days)"
+        formatted_df.at[idx, "Fixed"] = f"N = {fixed_raw:,.0f} ({row['Fixed']:,.0f} days)"
+
+
 
 # Display without index
 display(formatted_df.style.hide(axis="index"))
 
+
+
 ```
+<br>
+
+`Marginal Events Vs No Test`: The additional number of conversions we expect to gain by running the experiment, compared to doing nothing at all.
+
+`Projected Mean @ Year-End`: The average performance you'd expect if you ran this test and deployed the winning variant — including both the test period and the post-test rollout; reflects thet total impact of the experiment.
+
+> Marginal Events vs No Test is directly derived from the Projected Mean @ Year-End. It quantifies the gain by multiplying the projected lift over control by the total number of users — turning a small percentage improvement into a tangible number of additional conversions.
+
+## Summary
+
+Significance Testing, SPRT or Fixed, perform terribly in a world where treatment effects are centered at 100.
+**Why?** These were designed to detect effects at 101, but the mean of true effects is 100. As a result, most of the time **significance testing** will leave these small marginal gains on the table. 
+
 
 # Glossary
 
