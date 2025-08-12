@@ -12,7 +12,7 @@ format:
     toc-indent: 1em
 ---
 
-# Introduction
+# TL;DR
 
 If you design, run, or analyze AB tests to drive business outcomes — whether in product, growth, or marketing — this paper is for you. It’s a warning about the hidden costs of using significance testing.
 
@@ -20,7 +20,7 @@ Significance testing, as typically applied in industry, is misaligned with how b
 
 This paper explores what happens when we let go of inherited defaults — like α = 0.05, 80% power, and fixed MDEs — and focus instead on decision quality. Using Bayesian inference and large-scale simulations, I’ll show how that shift leads to faster tests, more accurate decisions, and more profitable experimentation.
 
-> You run a test. The variant improves conversion by 0.7% (relative). It’s not statistically significant — so you kill it. What did you just leave on the table — and how many times has that happened before?
+> You run a test. The variant improves conversion by 0.7%. It’s not statistically significant — so you kill it. What did you just leave on the table — and how many times has that happened before?
 
 # Significance Testing
 
@@ -138,7 +138,7 @@ itc_fig.show()
 ## Candidate Risk Thresholds
 
 A risk threshold defines how much expected loss we’re willing to tolerate before stopping the test and choosing a winner.
-To explore tradeoffs between speed and precision, we simulate decisions across a range of candidate thresholds — eg (from 0.01% to 0.10%).
+To explore tradeoffs between speed and precision, we simulate decisions across a range of candidate thresholds — e.g., (from 0.01% to 0.10%).
 Lower thresholds are more conservative, delaying action until the risk is minimal. Higher thresholds allow faster decisions but accept more uncertainty.
 
 
@@ -458,6 +458,13 @@ With Bayesian testing, I don’t get an arbitrary threshold — I get a curve. I
 threshold_figure.show()
 
 ```
+<br>
+
+`Projected Mean @ Year-End`: The average performance you'd expect if you ran this test and deployed the winning variant — including both the test period and the post-test rollout; reflects thet total impact of the experiment.
+
+`Marginal Events Vs No Test`: The additional number of conversions we expect to gain by running the experiment, compared to doing nothing at all.
+
+> Marginal Events vs No Test is directly derived from the Projected Mean @ Year-End. It quantifies the gain by multiplying the projected lift over control by the total number of users — turning a small percentage improvement into a tangible number of additional conversions.
 
 ## Insights
 
@@ -466,8 +473,10 @@ threshold_figure.show()
 2. Bayesian Analysis yields 50% `Selected Best Condition` rate because the mean of treatment effects is centered at 100, regardless of Risk Threshold.
     - Sneak Peek: Do we expect better or worse accuracy from Significance Tests? <span style="font-size: 2em;">😉</span>
 
+3. It's possible to average many `Marginl Events vs No Test` even if your distribution of treatment effects null mean of 0.
 
-## Bayes Vs. Significance
+
+## Bayesian Vs. Significance
 
 Let’s see how the same `{python} f"{NUMBER_SIMULATIONS:,}"` simulations perform under traditional significance testing. We’ll use a standard setup: α = 0.05, 80% power, and a minimum detectable effect of 101.
 
@@ -571,17 +580,11 @@ display(formatted_df.style.hide(axis="index"))
 
 
 ```
-<br>
 
-`Marginal Events Vs No Test`: The additional number of conversions we expect to gain by running the experiment, compared to doing nothing at all.
-
-`Projected Mean @ Year-End`: The average performance you'd expect if you ran this test and deployed the winning variant — including both the test period and the post-test rollout; reflects thet total impact of the experiment.
-
-> Marginal Events vs No Test is directly derived from the Projected Mean @ Year-End. It quantifies the gain by multiplying the projected lift over control by the total number of users — turning a small percentage improvement into a tangible number of additional conversions.
 
 ### Analysis of Results
 
-Traditional significance tests — SPRT and Fixed — were built to detect big, obvious wins. But in these simulations, the average effect is 100. Small gains like 100.3? SPRT shrugs. Fixed tests, tuned to detect 101, never even notice.
+Traditional significance tests — SPRT and Fixed — are built to detect big, obvious wins. But in these simulations, the average effect is 100. Small gains like 100.3? SPRT shrugs. Fixed tests, tuned to detect 101, don't have time to notice.
 
 These methods aren’t wrong — they’re just answering the wrong question. They optimize for avoiding false positives, not for capturing real value. As the comparison shows, Significance Tests routinely miss marginal winners and leaves potential gains on the table.
 
@@ -632,7 +635,7 @@ Some might argue that this comparison was unfair — that we "stacked the deck" 
 But those aren’t cherry-picked values — they’re the defaults used across much of the tech industry. If those defaults lead to missed wins and underpowered tests, that’s not a critique of this simulation — it’s a critique of the status quo.
 
 Others might say significance testing could perform better with a different combo of α, β, and MDE. But if you're tuning those parameters to maximize business impact...
-You're doing Bayesian inference — just with extra steps.
+You're designing a Bayesian AB Test — just with extra steps.
 
 # Conclusion
 
