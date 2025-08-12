@@ -536,10 +536,14 @@ formatted_df = df.copy()
 
 for idx, row in df.iterrows():
     metric = row["Metric"]
-    if metric in ["Projected Mean @ Year-End", "Selected Best Condition"]:
+    if metric in [ "Selected Best Condition"]:
         formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:.2%}"
         formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:.2%}"
         formatted_df.at[idx, "Fixed"] = f"{row['Fixed']:.2%}"
+    elif metric in ["Projected Mean @ Year-End"]:
+        formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:.3%}"
+        formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:.3%}"
+        formatted_df.at[idx, "Fixed"] = f"{row['Fixed']:.3%}"
     elif metric == "Marginal Events vs No Test":
         formatted_df.at[idx, "Bayesian"] = f"{row['Bayesian']:,.0f}"
         formatted_df.at[idx, "SPRT"] = f"{row['SPRT']:,.0f}"
@@ -569,12 +573,19 @@ display(formatted_df.style.hide(axis="index"))
 
 > Marginal Events vs No Test is directly derived from the Projected Mean @ Year-End. It quantifies the gain by multiplying the projected lift over control by the total number of users — turning a small percentage improvement into a tangible number of additional conversions.
 
-## Summary
+### Analysis of Results
 
-Significance Testing, SPRT or Fixed, perform terribly in a world where treatment effects are centered at 100.
-**Why?** These were designed to detect effects at 101, but the mean of true effects is 100. As a result, most of the time **significance testing** will leave these small marginal gains on the table. 
+Significance-based methods — SPRT and Fixed — were built to detect big effects. But in our simulation, the average treatment effect is 100. That means most real-world gains fall below their detection threshold.
 
+**SPRT** is tuned to test MDE (101) vs. 100. So when the effect is 100.3, it shrugs and moves on.<br>
+**Fixed** tests are underpowered for anything below the MDE = 101, making them blind to most improvements.
 
+The result is that **Significance** methods routinely miss marginal winners and leave real value on the table.
+**Bayesian Testing** looks at risk and acts when the math says it’s safe.
+
+Across `{python} f"{NUMBER_SIMULATIONS:,}"` simulations, Bayesian testing delivered 2x the marginal value of significance testing.
+
+<!--
 # Glossary
 
 ::: {.callout-tip collapse="true" icon="" title="Significance Testing Glossary"}
@@ -605,3 +616,5 @@ Significance Testing, SPRT or Fixed, perform terribly in a world where treatment
 - **In context**: If you set this to `1%`, your test is designed to detect changes that are at least that big — smaller changes might go unnoticed.
 
 :::
+
+-->
