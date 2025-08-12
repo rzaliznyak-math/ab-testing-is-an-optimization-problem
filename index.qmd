@@ -14,11 +14,13 @@ format:
 
 # Introduction
 
-Significance testing, as traditionally applied in AB experiments, is often misaligned with business goals. While these statistical methods aim to minimize false positives, real business impact is frequently driven by avoiding false negatives — missed opportunities to create value.
+If you design, run, or analyze AB tests to drive business outcomes — whether in product, growth, or marketing — this paper is for you. It’s a warning about the hidden costs of using significance testing.
 
-Below I show why significance thresholds like α = 0.05 are arbitrary and harm decision-making. I introduce Bayesian testing as a more practical alternative, and demonstrate through simulation how it better supports value-driven experimentation.
+Significance testing, as typically applied in industry, is misaligned with how businesses actually create value. It was built for science — where false positives are catastrophic, and delays are acceptable. But in the business world, the opposite is often true: **the real risk isn’t acting too soon — it’s waiting too long.**
 
-You'll see that focusing on the expected value of our decisions is a far more profitable strategy than chasing statistical significance.
+This paper explores what happens when we let go of inherited defaults — like α = 0.05, 80% power, and fixed MDEs — and focus instead on decision quality. Using Bayesian inference and large-scale simulations, I’ll show how that shift leads to faster tests, more accurate decisions, and more profitable experimentation.
+
+> You run a test. The variant improves conversion by 0.7% (relative). It’s not statistically significant — so you kill it. What did you just leave on the table — and how many times has that happened before?
 
 # Significance Testing
 
@@ -40,6 +42,8 @@ In practical terms, that means the test is designed to avoid **false positives**
 But in most business settings, **false positives aren’t that costly**. We thought a new button color improved conversion — turns out it didn’t. **So what?** The variant was flat, not disastrous.
 
 But missing a true winner? That’s a lost opportunity — and sometimes, **a costly one**.
+
+> What if you throw away 20 experiments in a year each with p-values just above 0.05. How much could you be sacrificing?
 
 
 
@@ -462,9 +466,10 @@ threshold_figure.show()
 2. Bayesian Analysis yields 50% `Selected Best Condition` rate because the mean of treatment effects is centered at 100, regardless of Risk Threshold.
     - Sneak Peek: Do we expect better or worse accuracy from Significance Tests? <span style="font-size: 2em;">😉</span>
 
+
 ## Bayes Vs. Significance
 
-Let’s see how the same `{python} f"{NUMBER_SIMULATIONS:,}"` simulations perform under traditional significance testing. We’ll use a standard setup: α = 0.05, 80% power, and a detectable effect of 101.
+Let’s see how the same `{python} f"{NUMBER_SIMULATIONS:,}"` simulations perform under traditional significance testing. We’ll use a standard setup: α = 0.05, 80% power, and a minimum detectable effect of 101.
 
 How does this legacy approach stack up against Bayesian testing in practice?
 
@@ -472,6 +477,7 @@ How does this legacy approach stack up against Bayesian testing in practice?
 ```{python}
 #| echo: false
 #| output: true
+#| fig-cap: "With true effects centered at 100; SPRT and Fixed rarely detect the best condition."
 import pandas as pd
 from IPython.display import display
 
@@ -575,15 +581,12 @@ display(formatted_df.style.hide(axis="index"))
 
 ### Analysis of Results
 
-Significance-based methods — SPRT and Fixed — were built to detect big effects. But in our simulation, the average treatment effect is 100. That means most real-world gains fall below their detection threshold.
+Traditional significance tests — SPRT and Fixed — were built to detect big, obvious wins. But in these simulations, the average effect is 100. Small gains like 100.3? SPRT shrugs. Fixed tests, tuned to detect 101, never even notice.
 
-**SPRT** is tuned to test MDE (101) vs. 100. So when the effect is 100.3, it shrugs and moves on.<br>
-**Fixed** tests are underpowered for anything below the MDE = 101, making them blind to most improvements.
+These methods aren’t wrong — they’re just answering the wrong question. They optimize for avoiding false positives, not for capturing real value. As the comparison shows, Significance Tests routinely miss marginal winners and leaves potential gains on the table.
 
-The result is that **Significance** methods routinely miss marginal winners and leave real value on the table.
-**Bayesian Testing** looks at risk and acts when the math says it’s safe.
-
-Across `{python} f"{NUMBER_SIMULATIONS:,}"` simulations, Bayesian testing delivered 2x the marginal value of significance testing.
+**Bayesian testing**, on the other hand, isn’t concerned with p-values, power, or minimum detectable effects. It focuses on a single question: Is the risk low enough to act?
+That mindset proves far more profitable — across `{python} f"{NUMBER_SIMULATIONS:,}"` simulations, Bayesian testing delivered **2x the marginal value** of Significance testing.
 
 <!--
 # Glossary
@@ -617,4 +620,28 @@ Across `{python} f"{NUMBER_SIMULATIONS:,}"` simulations, Bayesian testing delive
 
 :::
 
+
+hypothesis testing/significance testing is predisposed to retain the null, even in the face of contrary evidence.
+It's possible to make money even we average a Null effect!
 -->
+
+# Counterargument
+
+Some might argue that this comparison was unfair — that we "stacked the deck" against significance testing by choosing α = 0.05, 80% power, and an MDE of 101.
+
+But those aren’t cherry-picked values — they’re the defaults used across much of the tech industry. If those defaults lead to missed wins and underpowered tests, that’s not a critique of this simulation — it’s a critique of the status quo.
+
+Others might say significance testing could perform better with a different combo of α, β, and MDE. But if you're tuning those parameters to maximize business impact...
+You're doing Bayesian inference — just with extra steps.
+
+# Conclusion
+
+Significance testing has its place — but in business experimentation, it’s often too cautious for its own good. Designed to minimize false positives, it delays action even when the downside is minimal. Valuable wins are discarded in the name of statistical purity.
+
+Bayesian testing takes a different path. It doesn’t demand overwhelming proof — just enough evidence to make a smart, low-risk decision. That mindset enables faster tests and more accurate decisions.
+
+And this isn’t limited to conversion rates. The same approach works for continuous metrics like revenue, or for metrics you want to reduce — like churn, cancellations, or latency.
+
+If you design, run, or analyze experiments, ask yourself: Is your testing framework helping you act — or holding you back?
+
+I’d love to connect — reach out via [email](mailto:rzaliznyak@gmail.com) or on LinkedIn.
