@@ -644,4 +644,4 @@ And this isn’t limited to conversion rates. The same approach works for contin
 
 If you design, run, or analyze experiments, ask yourself: Is your testing framework helping you act — or holding you back?
 
-I’d love to connect — reach out via [email](mailto:rzaliznyak@gmail.com) or on LinkedIn.
+I’d love to connect — reach out to ask questions or to learn how to run these simulations on your own; contact via [email](mailto:rzaliznyak@gmail.com) or on LinkedIn.
