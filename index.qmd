@@ -18,7 +18,7 @@ If you design, run, or analyze AB tests to drive business outcomes — whether i
 
 Significance testing, as typically applied in industry, is misaligned with how businesses actually create value. It was built for science — where false positives are catastrophic, and delays are acceptable. But in the business world, the opposite is often true: **the real risk isn’t acting too soon — it’s waiting too long.**
 
-This paper explores what happens when we let go of inherited defaults — like α = 0.05, 80% power, and fixed MDEs — and focus instead on decision quality. Using Bayesian inference and large-scale simulations, I’ll show how that shift leads to faster tests, more accurate decisions, and more profitable experimentation.
+This paper explores what happens when we let go of arbitrary defaults — like α = 0.05, 80% power, and fixed MDEs — and focus instead on decision quality. Using Bayesian inference and large-scale simulations, I’ll show how that shift leads to faster tests, more accurate decisions, and more profitable experimentation.
 
 > You run a test. The variant improves conversion by 0.7%. It’s not statistically significant — so you kill it. What did you just leave on the table — and how many times has that happened before?
 
@@ -43,7 +43,7 @@ But in most business settings, **false positives aren’t that costly**. We thou
 
 But missing a true winner? That’s a lost opportunity — and sometimes, **a costly one**.
 
-> What if you throw away 20 experiments in a year each with p-values just above 0.05. How much could you be sacrificing?
+> What if you throw away 20 experiments in a year each with p-values just above 0.05. How many of them were real effects?!
 
 
 
@@ -58,7 +58,7 @@ Bayesian testing isn’t a new set of formulas — it’s a mindset shift. One t
 
 ## Aligned Costs
 
-We use expected loss as our stopping criterion — a measure that quantifies the risk of making the wrong decision, combining both the likelihood of harm and its expected magnitude:
+In this paper we use expected loss as our stopping criterion — a measure that quantifies the risk of making the wrong decision, combining both the likelihood of harm and its expected magnitude:
 
 $$
 \text{Expected Loss} = \Pr(\text{harm}) \times \mathbb{E}[\text{Magnitude of Harm}]
@@ -76,11 +76,11 @@ NUMBER_SIMULATIONS = int(5e4)
 
 To evaluate these ideas under real-world constraints — limited time, finite traffic, and the tradeoff between speed and confidence — I simulate `{python} f"{NUMBER_SIMULATIONS:,}"` randomized AB tests with equal allocation to control and treatment.
 
-The key advantage of this framework is that we know the true effect behind each experiment, while the analysis methods (Bayesian and Significance) operate blindly, vulnerable to noise and randomness. Only after all decisions are made do we compare their outcomes — measuring accuracy, timing, and business value.
+The key advantage of this framework is that we know the true effect coded into each experiment, while the analysis methods (Bayesian and Significance) operate blindly, equally vulnerable to noise and randomness. Only after all decisions are made do we compare their outcomes — measuring accuracy, timing, and business value.
 
 ## Experiment Design
 
-Each of the `{python} f"{NUMBER_SIMULATIONS:,}"` experiments runs for up to 20 days, with traffic split 50/50 between control and treatment.
+Each of the `{python} f"{NUMBER_SIMULATIONS:,}"` simulated experiments runs for up to 20 days, with traffic split 50/50 between control and treatment.
 Users are randomly assigned daily, and outcomes are sampled using a binomial process — introducing natural variation that mimics how real experiments unfold over time.
 
 
@@ -95,7 +95,7 @@ Although the **Control** group has a true conversion rate of 65%, observed resul
 
 Each experiment draws a treatment effect from a normal distribution centered at 100 with a standard error of 0.5 — modeling the natural variability seen in real-world tests, where small effects are common and large lifts are rare.
 
-Even when a treatment is truly better (i.e., ITC > 100), it can underperform in a given simulation due to random variation — just as it might in practice.
+Even when a treatment is truly better (i.e., ITC > 100), it can underperform in a given simulation due to random variation — just as it might in the real world.
 
 ```{python}
 #| echo: false
@@ -133,7 +133,7 @@ itc_fig.show()
 
 ```
 
-> Later We can swap in other distributions later, like Laplace.
+> Later we can swap in other distributions later, like Laplace. 
 
 ## Candidate Risk Thresholds
 
@@ -460,6 +460,8 @@ threshold_figure.show()
 ```
 <br>
 
+<h>Definitions</h>
+
 `Projected Mean @ Year-End`: The average performance you'd expect if you ran this test and deployed the winning variant — including both the test period and the post-test rollout; reflects thet total impact of the experiment.
 
 `Marginal Events Vs No Test`: The additional number of conversions we expect to gain by running the experiment, compared to doing nothing at all.
@@ -473,7 +475,7 @@ threshold_figure.show()
 2. Bayesian Analysis yields 50% `Selected Best Condition` rate because the mean of treatment effects is centered at 100, regardless of Risk Threshold.
     - Sneak Peek: Do we expect better or worse accuracy from Significance Tests? <span style="font-size: 2em;">😉</span>
 
-3. It's possible to average many `Marginl Events vs No Test` even if your distribution of treatment effects null mean of 0.
+3. It's possible to average high values of `Marginl Events vs No Test` even if your mean of treatment effects is null.
 
 
 ## Bayesian Vs. Significance
@@ -639,11 +641,11 @@ You're designing a Bayesian AB Test — just with extra steps.
 
 # Conclusion
 
-Significance testing has its place — but in business experimentation, it’s often too cautious for its own good. Designed to minimize false positives, it delays action even when the downside is minimal. Valuable wins are discarded in the name of statistical purity.
+Significance testing has its place, but in business experimentation where time and resources are finite, it’s too cautious for its own good. Designed to minimize false positives, it delays action even when the downside is minimal. Valuable wins are discarded in the name of statistical purity.
 
-Bayesian testing takes a different path. It doesn’t demand overwhelming proof — just enough evidence to make a smart, low-risk decision. That mindset enables faster tests and more accurate decisions.
+Bayesian testing is less risk averse. It doesn’t demand overwhelming proof — just enough evidence to make a smart, low-risk decision. That mindset enables faster tests and more accurate decisions that generate way more value.
 
-And this isn’t limited to conversion rates. The same approach works for continuous metrics like revenue, or for metrics you want to reduce — like churn, cancellations, or latency.
+This isn’t limited to conversion rates. The same approach works for continuous metrics like revenue, or for metrics you want to reduce — like churn, cancellations, or latency.
 
 If you design, run, or analyze experiments, ask yourself: Is your testing framework helping you act — or holding you back?
 
